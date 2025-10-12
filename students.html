@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Students - Exam Seating System</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="logo">Exam Seating</div>
+      <ul>
+        <li><a href="index.html">Dashboard</a></li>
+        <li><a href="departments.html">Departments</a></li>
+        <li><a href="semesters.html">Semesters</a></li>
+        <li class="active"><a href="#">Students</a></li>
+        <li><a href="rooms.html">Rooms</a></li>
+        <li><a href="seating-plans.html">Seating Plans</a></li>
+        <li><a href="allocated-seats.html">Allocated Seats</a></li>
+      </ul>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h1>Students</h1>
+        <div class="actions">
+          <button id="themeToggle">🌙</button>
+        </div>
+      </header>
+
+      <section class="table-section">
+        <h2>Students List</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Roll No</th>
+              <th>Full Name</th>
+              <th>Semester</th>
+              <th>Seat Preference</th>
+            </tr>
+          </thead>
+          <tbody id="studentsBody">
+            <!-- Dynamic rows will appear here -->
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <script>
+      // Theme toggle
+      document.getElementById("themeToggle").onclick = () => {
+        document.body.classList.toggle("dark");
+      };
+
+      // Fetch students
+      const studentsBody = document.getElementById("studentsBody");
+
+      fetch("http://localhost:5000/api/students")
+        .then((res) => res.json())
+        .then((data) => {
+          studentsBody.innerHTML = data
+            .map(
+              (student) => `
+              <tr>
+                <td>${student.roll_no}</td>
+                <td>${student.full_name}</td>
+                <td>${student.semester_title}</td>
+                <td>${student.seat_pref || "-"}</td>
+              </tr>
+            `
+            )
+            .join("");
+        })
+        .catch((err) => console.error("Error fetching students:", err));
+    </script>
+  </body>
+</html>

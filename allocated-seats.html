@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Allocated Seats - Exam Seating System</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="logo">Exam Seating</div>
+      <ul>
+        <li><a href="index.html">Dashboard</a></li>
+        <li><a href="departments.html">Departments</a></li>
+        <li><a href="semesters.html">Semesters</a></li>
+        <li><a href="students.html">Students</a></li>
+        <li><a href="rooms.html">Rooms</a></li>
+        <li><a href="seating-plans.html">Seating Plans</a></li>
+        <li class="active"><a href="#">Allocated Seats</a></li>
+      </ul>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h1>Allocated Seats</h1>
+        <div class="actions">
+          <button id="themeToggle">🌙</button>
+        </div>
+      </header>
+
+      <section class="table-section">
+        <h2>Seat Allocation</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Plan</th>
+              <th>Room</th>
+              <th>Seat Row</th>
+              <th>Seat Column</th>
+              <th>Student</th>
+            </tr>
+          </thead>
+          <tbody id="allocatedSeatsBody">
+            <!-- Dynamic rows will appear here -->
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <script>
+      // Theme toggle
+      document.getElementById("themeToggle").onclick = () => {
+        document.body.classList.toggle("dark");
+      };
+
+      // Fetch allocated seats
+      const allocatedSeatsBody = document.getElementById("allocatedSeatsBody");
+
+      async function loadAllocatedSeats() {
+        try {
+          const res = await fetch("http://localhost:5000/api/allocated-seats");
+          const data = await res.json();
+
+          // Populate table rows
+          allocatedSeatsBody.innerHTML = data
+            .map(
+              (row) => `
+              <tr>
+                <td>${row.plan_title}</td>
+                <td>${row.room_name}</td>
+                <td>${row.seat_row}</td>
+                <td>${row.seat_col}</td>
+                <td>${row.student_name}</td>
+              </tr>
+            `
+            )
+            .join("");
+        } catch (err) {
+          console.error("Error fetching allocated seats:", err);
+        }
+      }
+
+      loadAllocatedSeats();
+    </script>
+  </body>
+</html>

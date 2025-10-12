@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Seating Plans - Exam Seating System</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="logo">Exam Seating</div>
+      <ul>
+        <li><a href="index.html">Dashboard</a></li>
+        <li><a href="departments.html">Departments</a></li>
+        <li><a href="semesters.html">Semesters</a></li>
+        <li><a href="students.html">Students</a></li>
+        <li><a href="rooms.html">Rooms</a></li>
+        <li class="active"><a href="#">Seating Plans</a></li>
+        <li><a href="allocated-seats.html">Allocated Seats</a></li>
+      </ul>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h1>Seating Plans</h1>
+        <div class="actions">
+          <button id="themeToggle">🌙</button>
+        </div>
+      </header>
+
+      <section class="table-section">
+        <h2>Plans List</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Plan Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="plansBody">
+            <!-- Dynamic rows will appear here -->
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <script>
+      // 🌙 Theme toggle
+      document.getElementById("themeToggle").onclick = () => {
+        document.body.classList.toggle("dark");
+      };
+
+      // Fetch seating plans
+      const plansBody = document.getElementById("plansBody");
+
+      fetch("http://localhost:5000/api/seating-plans")
+        .then((res) => res.json())
+        .then((data) => {
+          plansBody.innerHTML = data
+            .map(
+              (plan) => `
+              <tr>
+                <td>${plan.title}</td>
+                <td>${new Date(plan.plan_date).toLocaleDateString()}</td>
+                <td class="status ${plan.status}">${
+                plan.status.charAt(0).toUpperCase() + plan.status.slice(1)
+              }</td>
+              </tr>
+            `
+            )
+            .join("");
+        })
+        .catch((err) => console.error("Error fetching seating plans:", err));
+    </script>
+  </body>
+</html>

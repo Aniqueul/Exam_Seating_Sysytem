@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Exam Seating System</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">Exam Seating</div>
+      <ul>
+        <li class="active"><a href="index.html">Dashboard</a></li>
+        <li><a href="departments.html">Departments</a></li>
+        <li><a href="semesters.html">Semesters</a></li>
+        <li><a href="students.html">Students</a></li>
+        <li><a href="rooms.html">Rooms</a></li>
+        <li><a href="seating-plans.html">Seating Plans</a></li>
+        <li><a href="allocated-seats.html">Allocated Seats</a></li>
+      </ul>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <h1>Exam Seating Dashboard</h1>
+        <div class="actions">
+          <button id="themeToggle">🌙</button>
+          <button id="openModal">+ Generate Plan</button>
+          <div class="user">
+            <img src="https://i.pravatar.cc/40" alt="Admin" />
+            <span>Admin</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dashboard Cards -->
+      <section class="cards">
+        <div class="card">
+          <h3>Departments</h3>
+          <p id="departmentsCount">0</p>
+        </div>
+        <div class="card">
+          <h3>Semesters</h3>
+          <p id="semestersCount">0</p>
+        </div>
+        <div class="card">
+          <h3>Students</h3>
+          <p id="studentsCount">0</p>
+        </div>
+        <div class="card">
+          <h3>Rooms</h3>
+          <p id="roomsCount">0</p>
+        </div>
+        <div class="card">
+          <h3>Plans</h3>
+          <p id="plansCount">0</p>
+        </div>
+      </section>
+
+      <!-- Seating Plans Table -->
+      <section class="table-section">
+        <h2>Seating Plans</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Plan Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="seatingPlansBody">
+            <!-- Dynamic data will populate here -->
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <!-- Generate Plan Modal -->
+    <div class="modal" id="planModal">
+      <div class="modal-content">
+        <h2>Generate Seating Plan</h2>
+        <form id="generatePlanForm">
+          <label>Title</label>
+          <input
+            type="text"
+            name="title"
+            placeholder="Midterm Fall 2025"
+            required
+          />
+
+          <label>Exam Date</label>
+          <input type="date" name="plan_date" required />
+
+          <label>Department</label>
+          <select name="department_id" id="departmentSelect"></select>
+
+          <label>Semester</label>
+          <select name="semester_id" id="semesterSelect"></select>
+
+          <div class="modal-actions">
+            <button type="button" id="closeModal">Cancel</button>
+            <button type="submit" class="btn-primary">Generate</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // 🌙 Theme Toggle
+      const toggle = document.getElementById("themeToggle");
+      toggle.addEventListener("click", () => {
+        document.body.classList.toggle("dark");
+      });
+
+      // 🧾 Modal Control
+      const modal = document.getElementById("planModal");
+      const openBtn = document.getElementById("openModal");
+      const closeBtn = document.getElementById("closeModal");
+
+      openBtn.onclick = () => (modal.style.display = "flex");
+      closeBtn.onclick = () => (modal.style.display = "none");
+      window.onclick = (e) => {
+        if (e.target === modal) modal.style.display = "none";
+      };
+
+      // 🌐 Fetch Dashboard Counts
+      async function loadDashboardCounts() {
+        try {
+          const [departments, semesters, students, rooms, plans] =
+            await Promise.all([
+              fetch("http://localhost:5000/api/departments").then((res) =>
+                res.json()
+              ),
+              fetch("http://localhost:5000/api/semesters").then((res) =>
+                res.json()
+              ),
+              fetch("http://localhost:5000/api/students").then((res) =>
+                res.json()
+              ),
+              fetch("http://localhost:5000/api/rooms").then((res) =>
+                res.json()
+              ),
+              fetch("http://localhost:5000/api/seating-plans").then((res) =>
+                res.json()
+              ),
+            ]);
+
+          document.getElementById("departmentsCount").textContent =
+            departments.length;
+          document.getElementById("semestersCount").textContent =
+            semesters.length;
+          document.getElementById("studentsCount").textContent =
+            students.length;
+          document.getElementById("roomsCount").textContent = rooms.length;
+          document.getElementById("plansCount").textContent = plans.length;
+
+          // Populate seating plans table
+          const seatingPlansBody = document.getElementById("seatingPlansBody");
+          seatingPlansBody.innerHTML = plans
+            .map(
+              (plan) => `
+            <tr>
+              <td>${plan.title}</td>
+              <td>${new Date(plan.plan_date).toLocaleDateString()}</td>
+              <td class="status ${plan.status.toLowerCase()}">${
+                plan.status
+              }</td>
+            </tr>
+          `
+            )
+            .join("");
+
+          // Populate modal selects
+          const departmentSelect = document.getElementById("departmentSelect");
+          departmentSelect.innerHTML = departments
+            .map((d) => `<option value="${d.id}">${d.title}</option>`)
+            .join("");
+
+          const semesterSelect = document.getElementById("semesterSelect");
+          semesterSelect.innerHTML = semesters
+            .map((s) => `<option value="${s.id}">${s.title}</option>`)
+            .join("");
+        } catch (err) {
+          console.error("Error loading dashboard data:", err);
+        }
+      }
+
+      loadDashboardCounts();
+
+      // 📝 Handle Generate Plan Form
+      const generateForm = document.getElementById("generatePlanForm");
+      generateForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const formData = Object.fromEntries(
+          new FormData(generateForm).entries()
+        );
+
+        try {
+          await fetch("http://localhost:5000/api/seating-plans", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: formData.title,
+              plan_date: formData.plan_date,
+              created_by: 1, // admin id
+              status: "draft",
+            }),
+          });
+          modal.style.display = "none";
+          loadDashboardCounts(); // Refresh dashboard
+        } catch (err) {
+          console.error("Error creating plan:", err);
+        }
+      });
+    </script>
+  </body>
+</html>

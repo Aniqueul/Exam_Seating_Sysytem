@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rooms - Exam Seating System</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="logo">Exam Seating</div>
+      <ul>
+        <li><a href="index.html">Dashboard</a></li>
+        <li><a href="departments.html">Departments</a></li>
+        <li><a href="semesters.html">Semesters</a></li>
+        <li><a href="students.html">Students</a></li>
+        <li class="active"><a href="#">Rooms</a></li>
+        <li><a href="seating-plans.html">Seating Plans</a></li>
+        <li><a href="allocated-seats.html">Allocated Seats</a></li>
+      </ul>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h1>Rooms</h1>
+        <div class="actions">
+          <button id="themeToggle">🌙</button>
+        </div>
+      </header>
+
+      <section class="table-section">
+        <h2>Rooms List</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Room Code</th>
+              <th>Name</th>
+              <th>Capacity</th>
+              <th>Rows</th>
+              <th>Columns</th>
+            </tr>
+          </thead>
+          <tbody id="roomsBody">
+            <!-- Dynamic rows will appear here -->
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <script>
+      // 🌙 Theme toggle
+      document.getElementById("themeToggle").onclick = () => {
+        document.body.classList.toggle("dark");
+      };
+
+      // Fetch rooms
+      const roomsBody = document.getElementById("roomsBody");
+
+      fetch("http://localhost:5000/api/rooms")
+        .then((res) => res.json())
+        .then((data) => {
+          roomsBody.innerHTML = data
+            .map(
+              (room) => `
+              <tr>
+                <td>${room.code}</td>
+                <td>${room.name}</td>
+                <td>${room.capacity}</td>
+                <td>${room.rows}</td>
+                <td>${room.cols}</td>
+              </tr>
+            `
+            )
+            .join("");
+        })
+        .catch((err) => console.error("Error fetching rooms:", err));
+    </script>
+  </body>
+</html>

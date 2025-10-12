@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Semesters - Exam Seating System</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="logo">Exam Seating</div>
+      <ul>
+        <li><a href="index.html">Dashboard</a></li>
+        <li><a href="departments.html">Departments</a></li>
+        <li class="active"><a href="#">Semesters</a></li>
+        <li><a href="students.html">Students</a></li>
+        <li><a href="rooms.html">Rooms</a></li>
+        <li><a href="seating-plans.html">Seating Plans</a></li>
+        <li><a href="allocated-seats.html">Allocated Seats</a></li>
+      </ul>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h1>Semesters</h1>
+        <div class="actions">
+          <button id="themeToggle">🌙</button>
+        </div>
+      </header>
+
+      <section class="table-section">
+        <h2>Semesters List</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Department</th>
+              <th>Title</th>
+              <th>Code</th>
+              <th>Exam Date</th>
+            </tr>
+          </thead>
+          <tbody id="semestersBody">
+            <!-- Dynamic rows will appear here -->
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <script>
+      // Theme toggle
+      document.getElementById("themeToggle").onclick = () => {
+        document.body.classList.toggle("dark");
+      };
+
+      // Fetch semesters
+      const semestersBody = document.getElementById("semestersBody");
+
+      fetch("http://localhost:5000/api/semesters")
+        .then((res) => res.json())
+        .then((data) => {
+          semestersBody.innerHTML = data
+            .map(
+              (sem) => `
+              <tr>
+                <td>${sem.id}</td>
+                <td>${sem.department_name}</td>
+                <td>${sem.title}</td>
+                <td>${sem.code}</td>
+                <td>${new Date(sem.exam_date).toLocaleDateString()}</td>
+              </tr>
+            `
+            )
+            .join("");
+        })
+        .catch((err) => console.error("Error fetching semesters:", err));
+    </script>
+  </body>
+</html>
