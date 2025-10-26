@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login | Exam Seating System</title>
+    <title>Register | Exam Seating System</title>
     <link rel="stylesheet" href="style2.css" />
   </head>
   <body>
     <div class="container">
-      <h2>Welcome Back</h2>
+      <h2>Create Account</h2>
       <div class="input-group">
         <label>Username</label>
         <input
@@ -19,6 +19,10 @@
         />
       </div>
       <div class="input-group">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="Enter email" required />
+      </div>
+      <div class="input-group">
         <label>Password</label>
         <input
           type="password"
@@ -27,8 +31,8 @@
           required
         />
       </div>
-      <button onclick="loginUser()">Login</button>
-      <p>Don’t have an account? <a href="register.html">Register now</a></p>
+      <button onclick="registerUser()">Register</button>
+      <p>Already have an account? <a href="login.html">Login here</a></p>
       <p id="message"></p>
     </div>
 

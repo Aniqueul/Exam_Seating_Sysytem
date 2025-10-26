@@ -6,7 +6,9 @@
     <title>Departments - Exam Seating System</title>
     <link rel="stylesheet" href="style.css" />
   </head>
+
   <body>
+    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="logo">Exam Seating</div>
       <ul>
@@ -20,7 +22,9 @@
       </ul>
     </aside>
 
+    <!-- Main -->
     <main class="main">
+      <!-- Top Bar -->
       <header class="topbar">
         <h1>Departments</h1>
         <div class="actions">
@@ -28,50 +32,181 @@
         </div>
       </header>
 
+      <!-- Department Table Section -->
       <section class="table-section">
-        <h2>Departments List</h2>
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+          "
+        >
+          <h2>Departments List</h2>
+          <button class="add-btn" id="openModal">+ Add Department</button>
+        </div>
+
         <table>
           <thead>
             <tr>
               <th>ID</th>
+              <th>Department ID</th>
               <th>Title</th>
               <th>Code</th>
               <th>Exam Date</th>
+              <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="departmentsBody">
-            <!-- Dynamic data will populate here -->
-          </tbody>
+          <tbody id="departmentsBody"></tbody>
         </table>
       </section>
     </main>
 
+    <!-- Modal -->
+    <div class="modal" id="departmentModal">
+      <div class="modal-content">
+        <h2 id="modalTitle">Add Department</h2>
+        <form id="departmentForm">
+          <input
+            type="number"
+            id="department_id"
+            placeholder="Department ID"
+            required
+          />
+          <input type="text" id="title" placeholder="Title" required />
+          <input type="text" id="code" placeholder="Code" required />
+          <input type="date" id="exam_date" required />
+          <div class="modal-actions">
+            <button type="button" id="closeModal">Cancel</button>
+            <button type="submit" class="btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <script>
-      // Theme toggle
-      document.getElementById("themeToggle").onclick = () => {
+      const API_URL = "http://localhost:5000/api/departments";
+      const tableBody = document.getElementById("departmentsBody");
+      const modal = document.getElementById("departmentModal");
+      const openBtn = document.getElementById("openModal");
+      const closeBtn = document.getElementById("closeModal");
+      const form = document.getElementById("departmentForm");
+      const modalTitle = document.getElementById("modalTitle");
+      let editId = null;
+
+      // 🌓 Theme toggle
+      document.getElementById("themeToggle").onclick = () =>
         document.body.classList.toggle("dark");
-      };
 
-      // Fetch departments from backend
-      const departmentsBody = document.getElementById("departmentsBody");
+      // 🧾 Load Departments
+      async function loadDepartments() {
+        try {
+          const res = await fetch(API_URL);
+          const data = await res.json();
 
-      fetch("http://localhost:5000/api/departments")
-        .then((res) => res.json())
-        .then((data) => {
-          departmentsBody.innerHTML = data
+          tableBody.innerHTML = data
             .map(
-              (dept) => `
-              <tr>
-                <td>${dept.id}</td>
-                <td>${dept.title}</td>
-                <td>${dept.code}</td>
-                <td>${new Date(dept.exam_date).toLocaleDateString()}</td>
-              </tr>
-            `
+              (d) => `
+            <tr>
+              <td>${d.id}</td>
+              <td>${d.department_id}</td>
+              <td>${d.title}</td>
+              <td>${d.code}</td>
+              <td>${new Date(d.exam_date).toLocaleDateString()}</td>
+              <td>
+                <button class="action-btn edit"
+                  onclick="editDepartment(${d.id}, ${d.department_id}, '${
+                d.title
+              }', '${d.code}', '${d.exam_date}')">
+                  ✏️ Edit
+                </button>
+                <button class="action-btn delete" onclick="deleteDepartment(${
+                  d.id
+                })">
+                  🗑️ Delete
+                </button>
+              </td>
+            </tr>`
             )
             .join("");
-        })
-        .catch((err) => console.error("Error fetching departments:", err));
+        } catch (err) {
+          console.error("Error fetching departments:", err);
+        }
+      }
+
+      // ➕ Open Modal
+      openBtn.onclick = () => {
+        editId = null;
+        form.reset();
+        modalTitle.textContent = "Add Department";
+        modal.style.display = "flex";
+      };
+
+      // ❌ Close Modal
+      closeBtn.onclick = () => (modal.style.display = "none");
+      window.onclick = (e) => {
+        if (e.target === modal) modal.style.display = "none";
+      };
+
+      // 💾 Save Department (Add / Edit)
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const department_id = document.getElementById("department_id").value;
+        const title = document.getElementById("title").value.trim();
+        const code = document.getElementById("code").value.trim();
+        const exam_date = document.getElementById("exam_date").value;
+
+        if (!department_id || !title || !code || !exam_date)
+          return alert("All fields are required.");
+
+        const payload = { department_id, title, code, exam_date };
+        const method = editId ? "PUT" : "POST";
+        const url = editId ? `${API_URL}/${editId}` : API_URL;
+
+        try {
+          const res = await fetch(url, {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          const data = await res.json();
+          alert(data.message || "Operation successful");
+          modal.style.display = "none";
+          loadDepartments();
+        } catch (err) {
+          console.error("Save error:", err);
+        }
+      };
+
+      // ✏️ Edit Department
+      function editDepartment(id, department_id, title, code, exam_date) {
+        editId = id;
+        modalTitle.textContent = "Edit Department";
+        modal.style.display = "flex";
+
+        document.getElementById("department_id").value = department_id;
+        document.getElementById("title").value = title;
+        document.getElementById("code").value = code;
+        document.getElementById("exam_date").value = exam_date.split("T")[0];
+      }
+
+      // 🗑️ Delete Department
+      async function deleteDepartment(id) {
+        if (!confirm("Are you sure you want to delete this department?"))
+          return;
+        try {
+          const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+          const data = await res.json();
+          alert(data.message);
+          loadDepartments();
+        } catch (err) {
+          console.error("Delete error:", err);
+        }
+      }
+
+      // Initial load
+      loadDepartments();
     </script>
   </body>
 </html>
