@@ -9,11 +9,15 @@
 }
 
 body {
-  background: linear-gradient(135deg, #667eea, #764ba2);
   height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
+
+  /*  New background image */
+  background: url("https://i.pinimg.com/736x/28/0f/d9/280fd9026c9612289255a122e5d81b56.jpg")
+    no-repeat center center fixed;
+  background-size: cover;
 }
 
 .container {

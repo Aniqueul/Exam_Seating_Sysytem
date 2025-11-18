@@ -21,13 +21,18 @@ body.dark {
   box-sizing: border-box;
   font-family: "Poppins", sans-serif;
 }
-
 body {
-  background: var(--bg);
+  background: url("https://img.pikbest.com/wp/202405/comfortable-seat-modern-classroom-layout-featuring-sleek-desks-seating-and-high-tech-blackboard-3d-render_9837076.jpg!w700wp")
+    no-repeat center center fixed;
+  background-size: cover;
+
+  margin: 0;
+  padding: 0;
+  font-family: "Poppins", sans-serif;
+
+  /* Keep your theme variables working */
   color: var(--text);
-  display: flex;
-  transition: background 0.4s, color 0.4s;
-  min-height: 100vh;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 /* ===== SIDEBAR ===== */
