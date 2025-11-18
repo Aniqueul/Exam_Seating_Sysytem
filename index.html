@@ -75,6 +75,23 @@
           </tbody>
         </table>
       </section>
+
+      <!-- Seating Plan Layout -->
+      <section
+        class="table-section"
+        id="planLayoutSection"
+        style="display: none"
+      >
+        <h2>Seating Plan Layout</h2>
+        <div>
+          <label>Choose Room: </label>
+          <select id="roomFilter"></select>
+          <button id="exportPDF" class="btn-primary">Export as PDF</button>
+        </div>
+        <table id="planLayoutTable">
+          <!-- Dynamic seating layout -->
+        </table>
+      </section>
     </main>
 
     <!-- Generate Plan Modal -->
@@ -107,6 +124,8 @@
       </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script>
       // 🌙 Theme Toggle
       const toggle = document.getElementById("themeToggle");
@@ -125,7 +144,7 @@
         if (e.target === modal) modal.style.display = "none";
       };
 
-      // 🌐 Fetch Dashboard Counts
+      // 🌐 Load Dashboard & Seating Plans
       async function loadDashboardCounts() {
         try {
           const [departments, semesters, students, rooms, plans] =
@@ -156,32 +175,58 @@
           document.getElementById("roomsCount").textContent = rooms.length;
           document.getElementById("plansCount").textContent = plans.length;
 
-          // Populate seating plans table
+          // Populate seating plans table with clickable rows
           const seatingPlansBody = document.getElementById("seatingPlansBody");
           seatingPlansBody.innerHTML = plans
             .map(
               (plan) => `
-            <tr>
-              <td>${plan.title}</td>
-              <td>${new Date(plan.plan_date).toLocaleDateString()}</td>
-              <td class="status ${plan.status.toLowerCase()}">${
-                plan.status
-              }</td>
-            </tr>
-          `
+      <tr data-plan-id="${plan.id}" style="cursor:pointer;">
+        <td>${plan.title}</td>
+        <td>${new Date(plan.plan_date).toLocaleDateString()}</td>
+        <td class="status ${plan.status.toLowerCase()}">${plan.status}</td>
+      </tr>
+    `
             )
             .join("");
 
+          // Add click to load seating layout for each plan
+          document.querySelectorAll("#seatingPlansBody tr").forEach((tr) => {
+            tr.onclick = () => loadAllocatedSeats(tr.dataset.planId);
+          });
+
           // Populate modal selects
-          const departmentSelect = document.getElementById("departmentSelect");
-          departmentSelect.innerHTML = departments
+          document.getElementById("departmentSelect").innerHTML = departments
             .map((d) => `<option value="${d.id}">${d.title}</option>`)
             .join("");
-
-          const semesterSelect = document.getElementById("semesterSelect");
-          semesterSelect.innerHTML = semesters
+          document.getElementById("semesterSelect").innerHTML = semesters
             .map((s) => `<option value="${s.id}">${s.title}</option>`)
             .join("");
+
+          // Add room, rows, cols inputs to modal if not already added
+          if (!document.getElementById("roomSelect")) {
+            const roomSelect = document.createElement("select");
+            roomSelect.name = "room_id";
+            roomSelect.id = "roomSelect";
+            roomSelect.required = true;
+            roomSelect.innerHTML = rooms
+              .map((r) => `<option value="${r.id}">${r.name}</option>`)
+              .join("");
+            document.getElementById("generatePlanForm").appendChild(roomSelect);
+
+            const rowsInput = document.createElement("input");
+            rowsInput.type = "number";
+            rowsInput.name = "rows";
+            rowsInput.placeholder = "Number of rows";
+            rowsInput.required = true;
+            document.getElementById("generatePlanForm").appendChild(rowsInput);
+
+            const colsInput = document.createElement("input");
+            colsInput.type = "number";
+            colsInput.name = "cols";
+            colsInput.placeholder = "Number of columns";
+            colsInput.required = true;
+            document.getElementById("generatePlanForm").appendChild(colsInput);
+          }
         } catch (err) {
           console.error("Error loading dashboard data:", err);
         }
@@ -189,31 +234,143 @@
 
       loadDashboardCounts();
 
-      // 📝 Handle Generate Plan Form
+      // 📝 Generate Plan Form
       const generateForm = document.getElementById("generatePlanForm");
       generateForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const formData = Object.fromEntries(
           new FormData(generateForm).entries()
         );
-
         try {
-          await fetch("http://localhost:5000/api/seating-plans", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: formData.title,
-              plan_date: formData.plan_date,
-              created_by: 1, // admin id
-              status: "draft",
-            }),
-          });
+          const studentsRes = await fetch(
+            `http://localhost:5000/api/students?department_id=${formData.department_id}&semester_id=${formData.semester_id}`
+          );
+          const studentsList = await studentsRes.json();
+          const studentIds = studentsList.map((s) => s.id);
+
+          // Generate seating plan
+          const res = await fetch(
+            "http://localhost:5000/api/seating-plans/generate",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: formData.title,
+                plan_date: formData.plan_date,
+                students: studentIds,
+                room_id: formData.room_id,
+                rows: parseInt(formData.rows),
+                cols: parseInt(formData.cols),
+              }),
+            }
+          );
+
+          const data = await res.json(); // get planId and allocations
           modal.style.display = "none";
-          loadDashboardCounts(); // Refresh dashboard
+          await loadDashboardCounts();
+
+          // ✅ Load allocated seats immediately for the new plan
+          await loadAllocatedSeats(data.planId);
         } catch (err) {
-          console.error("Error creating plan:", err);
+          console.error("Error generating plan:", err);
         }
       });
+
+      // 🪑 Room-wise Seating Layout & PDF Export
+      let allAllocatedSeats = [];
+
+      async function loadAllocatedSeats(planId) {
+        try {
+          const res = await fetch(`http://localhost:5000/api/allocated-seats`);
+          const data = await res.json();
+          allAllocatedSeats = data.filter((a) => a.plan_id == planId);
+          populateRoomFilter();
+        } catch (err) {
+          console.error("Error loading allocated seats:", err);
+        }
+      }
+
+      function populateRoomFilter() {
+        const rooms = [...new Set(allAllocatedSeats.map((a) => a.room_name))];
+        const roomFilter = document.getElementById("roomFilter");
+        roomFilter.innerHTML = rooms
+          .map((r) => `<option value="${r}">${r}</option>`)
+          .join("");
+        roomFilter.onchange = () => populatePlanLayoutTable(roomFilter.value);
+
+        // auto-select first room
+        if (rooms.length) populatePlanLayoutTable(rooms[0]);
+
+        document.getElementById("planLayoutSection").style.display = "block";
+      }
+
+      function populatePlanLayoutTable(roomName) {
+        const seats = allAllocatedSeats.filter((a) => a.room_name === roomName);
+        if (!seats.length) return; // handle empty room gracefully
+        const maxRow = Math.max(...seats.map((s) => s.seat_row));
+        const maxCol = Math.max(...seats.map((s) => s.seat_col));
+
+        const table = document.getElementById("planLayoutTable");
+        table.innerHTML = "";
+        for (let r = 1; r <= maxRow; r++) {
+          const tr = document.createElement("tr");
+          for (let c = 1; c <= maxCol; c++) {
+            const seat = seats.find(
+              (s) => s.seat_row === r && s.seat_col === c
+            );
+            const td = document.createElement("td");
+            td.textContent = seat ? seat.student_name : "-";
+            td.style.border = "1px solid #ccc";
+            td.style.padding = "8px";
+            td.style.textAlign = "center";
+            tr.appendChild(td);
+          }
+          table.appendChild(tr);
+        }
+      }
+
+      // 📄 Export Seating Plan as PDF using jsPDF-AutoTable
+      document.getElementById("exportPDF").onclick = () => {
+        if (!allAllocatedSeats.length)
+          return alert("No seating plan to export!");
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        const roomName = document.getElementById("roomFilter").value;
+        doc.setFontSize(16);
+        doc.text(`Seating Plan - Room: ${roomName}`, 14, 15);
+
+        const seats = allAllocatedSeats.filter((s) => s.room_name === roomName);
+        if (!seats.length) {
+          return alert("No seats found for this room!");
+        }
+
+        const maxRow = Math.max(...seats.map((s) => s.seat_row));
+        const maxCol = Math.max(...seats.map((s) => s.seat_col));
+
+        const body = [];
+        for (let r = 1; r <= maxRow; r++) {
+          const row = [];
+          for (let c = 1; c <= maxCol; c++) {
+            const seat = seats.find(
+              (s) => s.seat_row === r && s.seat_col === c
+            );
+            row.push(seat ? seat.student_name : "-");
+          }
+          body.push(row);
+        }
+
+        doc.autoTable({
+          head: [],
+          body: body,
+          startY: 25,
+          theme: "grid",
+          styles: { fontSize: 10, halign: "center", valign: "middle" },
+        });
+
+        doc.save(`SeatingPlan_${roomName}.pdf`);
+      };
     </script>
   </body>
 </html>
