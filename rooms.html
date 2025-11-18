@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="logo">Exam Seating</div>
       <ul>
@@ -20,6 +21,7 @@
       </ul>
     </aside>
 
+    <!-- Main -->
     <main class="main">
       <header class="topbar">
         <h1>Rooms</h1>
@@ -29,51 +31,171 @@
       </header>
 
       <section class="table-section">
-        <h2>Rooms List</h2>
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+          "
+        >
+          <h2>Rooms List</h2>
+          <button class="add-btn" id="openModal">+ Add Room</button>
+        </div>
+
         <table>
           <thead>
             <tr>
-              <th>Room Code</th>
+              <th>ID</th>
+              <th>Code</th>
               <th>Name</th>
               <th>Capacity</th>
               <th>Rows</th>
               <th>Columns</th>
+              <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="roomsBody">
-            <!-- Dynamic rows will appear here -->
-          </tbody>
+          <tbody id="roomsBody"></tbody>
         </table>
       </section>
     </main>
 
+    <!-- Modal -->
+    <div class="modal" id="roomModal">
+      <div class="modal-content">
+        <h2 id="modalTitle">Add Room</h2>
+        <form id="roomForm">
+          <input type="text" id="code" placeholder="Room Code" required />
+          <input type="text" id="name" placeholder="Room Name" required />
+          <input type="number" id="capacity" placeholder="Capacity" required />
+          <input type="number" id="rows" placeholder="Rows" required />
+          <input type="number" id="cols" placeholder="Columns" required />
+          <div class="modal-actions">
+            <button type="button" id="closeModal">Cancel</button>
+            <button type="submit" class="btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <script>
-      // 🌙 Theme toggle
-      document.getElementById("themeToggle").onclick = () => {
+      const API_URL = "http://localhost:5000/api/rooms";
+      const tableBody = document.getElementById("roomsBody");
+      const modal = document.getElementById("roomModal");
+      const openBtn = document.getElementById("openModal");
+      const closeBtn = document.getElementById("closeModal");
+      const form = document.getElementById("roomForm");
+      const modalTitle = document.getElementById("modalTitle");
+      let editId = null;
+
+      // Theme toggle
+      document.getElementById("themeToggle").onclick = () =>
         document.body.classList.toggle("dark");
-      };
 
-      // Fetch rooms
-      const roomsBody = document.getElementById("roomsBody");
-
-      fetch("http://localhost:5000/api/rooms")
-        .then((res) => res.json())
-        .then((data) => {
-          roomsBody.innerHTML = data
+      // Load Rooms
+      async function loadRooms() {
+        try {
+          const res = await fetch(API_URL);
+          const data = await res.json();
+          tableBody.innerHTML = data
             .map(
               (room) => `
-              <tr>
-                <td>${room.code}</td>
-                <td>${room.name}</td>
-                <td>${room.capacity}</td>
-                <td>${room.rows}</td>
-                <td>${room.cols}</td>
-              </tr>
-            `
+          <tr>
+            <td>${room.id}</td>
+            <td>${room.code}</td>
+            <td>${room.name}</td>
+            <td>${room.capacity}</td>
+            <td>${room.rows}</td>
+            <td>${room.cols}</td>
+            <td>
+              <button class="action-btn edit"
+                onclick="editRoom(${room.id}, '${room.code}', '${room.name}', ${room.capacity}, ${room.rows}, ${room.cols})">
+                ✏️ Edit
+              </button>
+              <button class="action-btn delete" onclick="deleteRoom(${room.id})">🗑️ Delete</button>
+            </td>
+          </tr>
+        `
             )
             .join("");
-        })
-        .catch((err) => console.error("Error fetching rooms:", err));
+        } catch (err) {
+          console.error("Error fetching rooms:", err);
+        }
+      }
+
+      // Open Modal
+      openBtn.onclick = () => {
+        editId = null;
+        form.reset();
+        modalTitle.textContent = "Add Room";
+        modal.style.display = "flex";
+      };
+
+      // Close Modal
+      closeBtn.onclick = () => (modal.style.display = "none");
+      window.onclick = (e) => {
+        if (e.target === modal) modal.style.display = "none";
+      };
+
+      // Save Room (Add/Edit)
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const code = document.getElementById("code").value.trim();
+        const name = document.getElementById("name").value.trim();
+        const capacity = parseInt(document.getElementById("capacity").value);
+        const rows = parseInt(document.getElementById("rows").value);
+        const cols = parseInt(document.getElementById("cols").value);
+
+        if (!code || !name || !capacity || !rows || !cols)
+          return alert("All fields are required.");
+
+        const payload = { code, name, capacity, rows, cols };
+        const method = editId ? "PUT" : "POST";
+        const url = editId ? `${API_URL}/${editId}` : API_URL;
+
+        try {
+          const res = await fetch(url, {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          alert(data.message || "Operation successful");
+          modal.style.display = "none";
+          loadRooms();
+        } catch (err) {
+          console.error("Save error:", err);
+        }
+      };
+
+      // Edit Room
+      function editRoom(id, code, name, capacity, rows, cols) {
+        editId = id;
+        modalTitle.textContent = "Edit Room";
+        modal.style.display = "flex";
+
+        document.getElementById("code").value = code;
+        document.getElementById("name").value = name;
+        document.getElementById("capacity").value = capacity;
+        document.getElementById("rows").value = rows;
+        document.getElementById("cols").value = cols;
+      }
+
+      // Delete Room
+      async function deleteRoom(id) {
+        if (!confirm("Are you sure you want to delete this room?")) return;
+        try {
+          const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+          const data = await res.json();
+          alert(data.message);
+          loadRooms();
+        } catch (err) {
+          console.error("Delete error:", err);
+        }
+      }
+
+      // Initial load
+      loadRooms();
     </script>
   </body>
 </html>
